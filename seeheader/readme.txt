@@ -3,7 +3,7 @@ Contributors: readystudio
 Tags: header, navigation, mega menu, elementor, responsive
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 1.5.1
+Stable tag: 1.6.0
 License: GPLv2 or later
 
 An RTL WordPress header builder with eleven themes, a built-in menu editor, icon pack, mega menus, WordPress menus and an Elementor widget.
@@ -28,6 +28,12 @@ An RTL WordPress header builder with eleven themes, a built-in menu editor, icon
 فونت Yekan Bakh فقط در صفحهٔ تنظیمات پیشخوان بارگذاری می‌شود. هدر سایت فونت قالب فعال را به ارث می‌برد.
 
 == Changelog ==
+= 1.6.0 =
+* Choose desktop, mobile submenu, back and top bar arrows from the bundled Arrows and Arrows Action icon packs.
+* Render menu placeholders without fake # links while preserving actual URLs for search engines and users.
+* Add intrinsic sizes and asynchronous decoding to offscreen mega menu images; connect disclosure controls to their panels and restore keyboard focus after back navigation.
+* Validate used SVG paths directly inside the icon directory without scanning the full icon catalog on every front-end request.
+* Load icon choices in batches in the admin picker to keep large icon packs responsive.
 = 1.5.1 =
 * Fixed desktop header placement, aligned ordinary dropdowns with their own menu item, and closed the hover gap above mega menus.
 * Isolated menu button, hover and mobile navigation styles from global theme button rules.

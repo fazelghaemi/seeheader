@@ -33,9 +33,12 @@
     const button = item.querySelector(':scope > .sh-submenu-toggle');
     if (link) link.setAttribute('aria-expanded', String(opening));
     if (button) button.setAttribute('aria-expanded', String(opening));
-    syncMobileState(item.closest('.sh-header'));
+    const header = item.closest('.sh-header');
+    syncMobileState(header);
+    if (opening && isMobile() && header?.classList.contains('sh-open')) header.querySelector('.sh-mobile-back')?.focus();
   }
 
+  let submenuId = 0;
   document.querySelectorAll('.sh-header').forEach(header => {
     const nav = header.querySelector('.sh-nav');
     if (!nav) return;
@@ -45,16 +48,26 @@
     back.innerHTML = '<span>فهرست</span>';
     nav.prepend(back);
     header.querySelectorAll('.sh-menu li').forEach(item => {
-      if (!item.querySelector(':scope > .sub-menu,:scope > .sh-mega-panel')) return;
+      const panel = item.querySelector(':scope > .sub-menu,:scope > .sh-mega-panel');
+      if (!panel) return;
       const control = item.querySelector(':scope > a,:scope > .sh-menu-heading-toggle');
       if (!control) return;
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'sh-submenu-toggle';
       button.setAttribute('aria-label', 'باز کردن زیرمنوی ' + control.textContent.trim());
       button.setAttribute('aria-expanded', 'false');
+      if (!panel.id) panel.id = (nav.id || 'sh-nav') + '-panel-' + (++submenuId);
+      button.setAttribute('aria-controls', panel.id);
       item.insertBefore(button, control.nextSibling);
     });
-    header.querySelectorAll('.sh-mega-column > .sh-menu-heading-toggle').forEach(button => button.setAttribute('aria-expanded', 'true'));
+    header.querySelectorAll('.sh-mega-column > .sh-menu-heading-toggle').forEach(button => {
+      const list = button.parentElement.querySelector(':scope > ul');
+      if (list) {
+        if (!list.id) list.id = (nav.id || 'sh-nav') + '-group-' + (++submenuId);
+        button.setAttribute('aria-controls', list.id);
+      }
+      button.setAttribute('aria-expanded', 'true');
+    });
   });
 
   function closeHeader(header) {
@@ -96,9 +109,11 @@
     if (back) {
       const header = back.closest('.sh-header');
       const open = [...header.querySelectorAll('.sh-menu li.is-open')].pop();
+      const returnFocus = open?.querySelector(':scope > .sh-submenu-toggle,:scope > .sh-menu-heading-toggle,:scope > a');
       if (open) closeMega(open);
       syncMobileState(header);
-      if (!header.classList.contains('sh-mobile-depth')) header.querySelector('.sh-menu > li > a')?.focus();
+      if (returnFocus && returnFocus.getClientRects().length) returnFocus.focus();
+      else header.querySelector('.sh-toggle')?.focus();
       return;
     }
     const branchButton = event.target.closest('.sh-header .sh-submenu-toggle');

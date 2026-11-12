@@ -3,20 +3,20 @@
 /**
  * Plugin Name: SeeHeader — هدر ساز
  * Description: هدر ساز واکنش‌گرا با طرح‌های متنوع، منوهای وردپرس و ویجت Elementor.
- * Version: 1.5.1
+ * Version: 1.6.0
  * Author: ReadyStudio
  * Text Domain: seeheader
  * Requires at least: 6.0
  * Requires PHP: 7.4
  */
 if (!defined('ABSPATH')) exit;
-define('SEEHEADER_VERSION', '1.5.1');
+define('SEEHEADER_VERSION', '1.6.0');
 define('SEEHEADER_DIR', plugin_dir_path(__FILE__));
 define('SEEHEADER_URL', plugin_dir_url(__FILE__));
 
 function seeheader_defaults()
 {
-  return ['enabled' => 0, 'theme' => 'classic', 'logo' => '', 'menu' => 0, 'menu_source' => 'builder', 'nav_items' => [], 'menu_icons' => [], 'search' => 1, 'account' => 1, 'account_url' => '', 'account_label' => 'ورود', 'account_icon' => 'Users/user.svg', 'sticky' => 0, 'items' => [], 'palette_mode' => 'theme', 'accent' => '#e5442d', 'surface' => '#ffffff', 'text' => '#201d1b', 'border' => '#dedbd8', 'menu_text' => '', 'menu_hover' => '', 'icon_color' => '', 'icon_hover' => '', 'button_bg' => '', 'button_text' => '', 'button_hover_bg' => '', 'button_hover_text' => '', 'button_border' => '', 'button_style' => 'solid', 'button_padding' => 11, 'button_radius' => 10, 'width' => 1240, 'logo_height' => 52, 'main_height' => '', 'search_width' => '', 'nav_gap' => '', 'control_radius' => '', 'nav_alignment' => '', 'desktop' => 1, 'mobile' => 1, 'shadow' => 0, 'topbar' => 0, 'topbar_text' => '', 'topbar_url' => '', 'mobile_breakpoint' => 782];
+  return ['enabled' => 0, 'theme' => 'classic', 'logo' => '', 'menu' => 0, 'menu_source' => 'builder', 'nav_items' => [], 'menu_icons' => [], 'search' => 1, 'account' => 1, 'account_url' => '', 'account_label' => 'ورود', 'account_icon' => 'Users/user.svg', 'menu_arrow_icon' => 'Arrows/alt-arrow-down.svg', 'submenu_arrow_icon' => 'Arrows/alt-arrow-left.svg', 'back_arrow_icon' => 'Arrows/alt-arrow-right.svg', 'topbar_arrow_icon' => 'Arrows/alt-arrow-left.svg', 'sticky' => 0, 'items' => [], 'palette_mode' => 'theme', 'accent' => '#e5442d', 'surface' => '#ffffff', 'text' => '#201d1b', 'border' => '#dedbd8', 'menu_text' => '', 'menu_hover' => '', 'icon_color' => '', 'icon_hover' => '', 'button_bg' => '', 'button_text' => '', 'button_hover_bg' => '', 'button_hover_text' => '', 'button_border' => '', 'button_style' => 'solid', 'button_padding' => 11, 'button_radius' => 10, 'width' => 1240, 'logo_height' => 52, 'main_height' => '', 'search_width' => '', 'nav_gap' => '', 'control_radius' => '', 'nav_alignment' => '', 'desktop' => 1, 'mobile' => 1, 'shadow' => 0, 'topbar' => 0, 'topbar_text' => '', 'topbar_url' => '', 'mobile_breakpoint' => 782];
 }
 function seeheader_scalar($value, $fallback = '')
 {
@@ -127,6 +127,10 @@ function seeheader_sanitize($in)
   $out['mobile_breakpoint'] = min(1024, max(640, absint(seeheader_scalar($in['mobile_breakpoint'] ?? 782))));
   $valid_icon_paths = array_column(seeheader_icon_catalog(), 'path');
   $out['account_icon'] = in_array($in['account_icon'] ?? '', $valid_icon_paths, true) ? $in['account_icon'] : 'Users/user.svg';
+  foreach (['menu_arrow_icon', 'submenu_arrow_icon', 'back_arrow_icon', 'topbar_arrow_icon'] as $arrow_key) {
+    $candidate = seeheader_scalar($in[$arrow_key] ?? '');
+    $out[$arrow_key] = in_array($candidate, $valid_icon_paths, true) ? $candidate : seeheader_defaults()[$arrow_key];
+  }
   $out['nav_items'] = [];
   $used_ids = [];
   if (!empty($in['nav_items']) && is_array($in['nav_items'])) foreach (array_slice($in['nav_items'], 0, 200) as $index => $row) {
@@ -214,6 +218,11 @@ add_action('rest_api_init', function () {
   ]);
   register_rest_route('seeheader/v1', '/icons', ['methods' => 'GET', 'permission_callback' => $permission, 'callback' => static function () { return rest_ensure_response(seeheader_icon_catalog()); }]);
 });
+function seeheader_admin_arrow_setting($key, $label, $value)
+{
+  $icon_url = seeheader_icon_url($value);
+  echo '<div class="sh-arrow-icon-field" data-sh-icon-control data-sh-arrow-control><span>' . esc_html($label) . '</span><input data-field="icon" type="hidden" name="seeheader_options[' . esc_attr($key) . ']" value="' . esc_attr($value) . '"><button type="button" class="sh-icon-select" aria-label="' . esc_attr($label) . '"><img data-icon-preview src="' . esc_url($icon_url) . '" alt=""' . ($icon_url ? '' : ' hidden') . '><b>' . esc_html($value ? basename($value) : 'انتخاب از پک') . '</b></button></div>';
+}
 function seeheader_settings_page()
 {
   if (!current_user_can('manage_options')) return;
@@ -272,6 +281,16 @@ function seeheader_settings_page()
                     <option value="center" <?php selected($o['nav_alignment'], 'center'); ?>>وسط</option>
                     <option value="flex-end" <?php selected($o['nav_alignment'], 'flex-end'); ?>>چپ</option>
                   </select></label>
+              </div>
+            </details>
+            <details class="sh-layout-advanced">
+              <summary>آیکن‌های فلش و راهبری</summary>
+              <p>فلش‌ها را از پک آیکن افزونه انتخاب کنید. آیکن‌های پوشه‌های Arrows و Arrows Action برای این بخش مناسب‌اند.</p>
+              <div class="sh-field-grid">
+                <?php seeheader_admin_arrow_setting('menu_arrow_icon', 'فلش بازشدن منو در دسکتاپ', $o['menu_arrow_icon']); ?>
+                <?php seeheader_admin_arrow_setting('submenu_arrow_icon', 'فلش ورود به زیرمنو در موبایل', $o['submenu_arrow_icon']); ?>
+                <?php seeheader_admin_arrow_setting('back_arrow_icon', 'فلش بازگشت در موبایل', $o['back_arrow_icon']); ?>
+                <?php seeheader_admin_arrow_setting('topbar_arrow_icon', 'فلش نوار اعلان', $o['topbar_arrow_icon']); ?>
               </div>
             </details>
             <div class="sh-menu-icons sh-wp-source-field">
@@ -422,9 +441,13 @@ function seeheader_settings_page()
               $badge_icon = !empty($item['badge_icon']) ? seeheader_icon($item['badge_icon']) : '';
               $badge = '<em class="sh-menu-badge"' . ($badge_vars ? ' style="' . esc_attr($badge_vars) . '"' : '') . '>' . $badge_icon . '<span>' . esc_html($item['badge']) . '</span></em>';
             }
-            $thumbnail = !empty($item['image']) ? '<span class="sh-menu-thumbnail"><img src="' . esc_url($item['image']) . '" alt="" loading="lazy"></span>' : '';
+            $thumbnail = !empty($item['image']) ? '<span class="sh-menu-thumbnail"><img src="' . esc_url($item['image']) . '" alt="" width="34" height="34" loading="lazy" decoding="async"></span>' : '';
             if ($is_heading && $has_children) return '<button type="button" class="sh-mega-heading sh-menu-heading-toggle" aria-haspopup="true" aria-expanded="false">' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . '<i class="sh-menu-chevron" aria-hidden="true"></i></button>' . $description;
             if ($is_heading) return '<span class="sh-mega-heading">' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . '</span>' . $description;
+            if (!$url || $url === '#') {
+              $tag = $has_children ? 'button' : 'span';
+              return '<' . $tag . ($tag === 'button' ? ' type="button" aria-expanded="false"' : '') . ' class="sh-menu-label' . ($has_children ? ' sh-menu-heading-toggle' : '') . '">' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . ($has_children ? '<i class="sh-menu-chevron" aria-hidden="true"></i>' : '') . '</' . $tag . '>' . $description;
+            }
             $aria = $has_children ? ' aria-haspopup="true" aria-expanded="false"' : '';
             return '<a href="' . esc_url($url) . '"' . $target . $aria . '>' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . ($has_children ? '<i class="sh-menu-chevron" aria-hidden="true"></i>' : '') . '</a>' . $description;
           }
@@ -503,7 +526,7 @@ function seeheader_settings_page()
               $url = $item['url'] ?? '#';
               $tag = $url && $url !== '#' ? 'a' : 'div';
               $target = $tag === 'a' && !empty($item['new_tab']) ? ' target="_blank" rel="noopener noreferrer"' : '';
-              $cards .= '<' . $tag . ' class="sh-feature-card"' . ($tag === 'a' ? ' href="' . esc_url($url) . '"' . $target : '') . '><img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['image_alt'] ?? '') . '" loading="lazy"><span class="sh-feature-copy"><strong>' . esc_html($item['label']) . '</strong>' . (!empty($item['description']) ? '<small>' . esc_html($item['description']) . '</small>' : '') . '</span></' . $tag . '>';
+              $cards .= '<' . $tag . ' class="sh-feature-card"' . ($tag === 'a' ? ' href="' . esc_url($url) . '"' . $target : '') . '><img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['image_alt'] ?? '') . '" width="320" height="160" loading="lazy" decoding="async"><span class="sh-feature-copy"><strong>' . esc_html($item['label']) . '</strong>' . (!empty($item['description']) ? '<small>' . esc_html($item['description']) . '</small>' : '') . '</span></' . $tag . '>';
             }
             return $cards ? '<aside class="sh-mega-featured" aria-label="مطالب تصویری">' . $cards . '</aside>' : '';
           }
@@ -511,9 +534,16 @@ function seeheader_settings_page()
           /** Render an icon from the bundled SVG icon pack. */
           function seeheader_valid_icon_path($path)
           {
-            static $allowed = null;
-            if ($allowed === null) $allowed = array_fill_keys(array_column(seeheader_icon_catalog(), 'path'), true);
-            return is_string($path) && isset($allowed[$path]);
+            static $checked = [];
+            if (!is_string($path) || $path === '' || strpos($path, "\0") !== false || strpos($path, '\\') !== false || $path[0] === '/' || preg_match('~(^|/)\.{1,2}(/|$)~', $path)) return false;
+            if (isset($checked[$path])) return $checked[$path];
+            if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'svg') return $checked[$path] = false;
+            $base = realpath(SEEHEADER_DIR . 'assets/icons');
+            $file = $base ? realpath($base . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path)) : false;
+            if (!$base || !$file || !is_file($file)) return $checked[$path] = false;
+            $prefix = $base . DIRECTORY_SEPARATOR;
+            $inside = DIRECTORY_SEPARATOR === '\\' ? strncasecmp($file, $prefix, strlen($prefix)) === 0 : strncmp($file, $prefix, strlen($prefix)) === 0;
+            return $checked[$path] = $inside;
           }
 
           function seeheader_icon_url($path)
@@ -588,6 +618,10 @@ function seeheader_settings_page()
             foreach (['main_height' => ['--sh-main-height', 48, 140], 'search_width' => ['--sh-search-width', 120, 700], 'nav_gap' => ['--sh-nav-gap', 0, 60], 'control_radius' => ['--sh-control-radius', 0, 40]] as $key => $rule) if (isset($o[$key]) && $o[$key] !== '') $vars .= ';' . $rule[0] . ':' . min($rule[2], max($rule[1], absint($o[$key]))) . 'px';
             foreach (['menu_text' => '--sh-menu-text', 'menu_hover' => '--sh-menu-hover', 'icon_color' => '--sh-icon-color', 'icon_hover' => '--sh-icon-hover', 'button_bg' => '--sh-button-bg', 'button_text' => '--sh-button-text', 'button_hover_bg' => '--sh-button-hover-bg', 'button_hover_text' => '--sh-button-hover-text', 'button_border' => '--sh-button-border'] as $key => $variable) if (!empty($o[$key]) && sanitize_hex_color($o[$key])) $vars .= ';' . $variable . ':' . $o[$key];
             $vars .= ';--sh-button-padding:' . min(32, max(0, absint($o['button_padding'] ?? 11))) . 'px;--sh-button-radius:' . min(48, max(0, absint($o['button_radius'] ?? 10))) . 'px';
+            foreach (['down' => 'menu_arrow_icon', 'left' => 'submenu_arrow_icon', 'right' => 'back_arrow_icon', 'topbar' => 'topbar_arrow_icon'] as $direction => $key) {
+              $arrow = seeheader_icon_url($o[$key] ?? $defaults[$key]);
+              if ($arrow) $vars .= ';--sh-arrow-' . $direction . ':url("' . $arrow . '")';
+            }
             if (in_array($o['nav_alignment'] ?? '', ['flex-start', 'center', 'flex-end'], true)) $vars .= ';--sh-nav-align:' . $o['nav_alignment'];
             $menu_markup = '';
             if (($o['menu_source'] ?? 'builder') === 'builder' && !empty($o['nav_items'])) $menu_markup = '<ul class="sh-menu sh-built-menu-list">' . seeheader_render_built_items($o['nav_items'], '', 0, $theme) . '</ul>';
@@ -595,7 +629,7 @@ function seeheader_settings_page()
             if (!$menu_markup || strpos($menu_markup, '<li') === false) $menu_markup = '<ul class="sh-menu"><li><a href="' . esc_url(home_url('/')) . '">' . esc_html__('صفحه اصلی', 'seeheader') . '</a></li></ul>';
             ob_start(); ?>
   <header class="<?php echo esc_attr($cls . ' sh-button-' . (in_array($o['button_style'] ?? '', ['solid', 'outline', 'ghost'], true) ? $o['button_style'] : 'solid')); ?>" style="<?php echo esc_attr($vars); ?>" dir="rtl">
-    <?php if (!empty($o['topbar']) && !empty($o['topbar_text'])): ?><div class="sh-topbar"><?php if (!empty($o['topbar_url'])): ?><a href="<?php echo esc_url($o['topbar_url']); ?>"><?php echo esc_html($o['topbar_text']); ?><span aria-hidden="true">←</span></a><?php else: ?><span><?php echo esc_html($o['topbar_text']); ?></span><?php endif; ?></div><?php endif; ?>
+    <?php if (!empty($o['topbar']) && !empty($o['topbar_text'])): ?><div class="sh-topbar"><?php if (!empty($o['topbar_url'])): ?><a href="<?php echo esc_url($o['topbar_url']); ?>"><?php echo esc_html($o['topbar_text']); ?><span class="sh-topbar-arrow" aria-hidden="true"></span></a><?php else: ?><span><?php echo esc_html($o['topbar_text']); ?></span><?php endif; ?></div><?php endif; ?>
     <div class="sh-main"><button class="sh-toggle" type="button" aria-expanded="false" aria-controls="<?php echo esc_attr($id); ?>" aria-label="باز کردن منو"><span></span><span></span></button>
       <?php echo seeheader_logo($o); ?><div class="sh-tools"><?php if (!empty($o['account'])): $account = $o['account_url'] ?: (is_user_logged_in() ? admin_url('profile.php') : wp_login_url()); ?><a class="sh-account" href="<?php echo esc_url($account); ?>" aria-label="<?php echo esc_attr(is_user_logged_in() ? 'حساب کاربری' : ($o['account_label'] ?: 'ورود')); ?>"><?php echo seeheader_icon($o['account_icon'] ?? 'Users/user.svg'); ?><span class="sh-tool-label"><?php echo is_user_logged_in() ? 'حساب کاربری' : esc_html($o['account_label'] ?: 'ورود'); ?></span></a><?php endif; ?>
         <?php if (!empty($o['search'])): ?><form class="sh-search" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>"><label class="screen-reader-text" for="<?php echo esc_attr($search_id); ?>">جستجو</label><input id="<?php echo esc_attr($search_id); ?>" type="search" name="s" value="<?php echo esc_attr(get_search_query()); ?>" placeholder="جستجو..."><button type="submit" aria-label="جستجو"><span class="sh-search-icon"></span></button></form><?php endif; ?></div>

@@ -2,6 +2,8 @@
   'use strict';
   const pack=window.SeeHeaderIconPack||{};
   const icons=Array.isArray(pack.icons)?pack.icons:[];
+  let pickerIcons=icons;
+  let iconLimit=48;
   const base=pack.baseUrl||'';
   const palettes=pack.palettes||{};
   let navIndex=$('.sh-nav-row').length,actionIndex=$('.sh-action-row').length;
@@ -116,8 +118,9 @@
   $(document).on('click','.sh-icon-close',closePicker);
   $(document).on('click','.sh-icon-picker',function(event){if(event.target===this)closePicker();});
   $(document).on('keydown',event=>{if(event.key==='Escape')closePicker();});
-  $(document).on('input','.sh-icon-search',renderIcons);
-  $(document).on('click','.sh-icon-category',function(){category=$(this).data('category');$('.sh-icon-category').removeClass('is-active');$(this).addClass('is-active');renderIcons();});
+  $(document).on('input','.sh-icon-search',function(){iconLimit=48;renderIcons();});
+  $(document).on('click','.sh-icon-category',function(){category=$(this).data('category');iconLimit=48;$('.sh-icon-category').removeClass('is-active');$(this).addClass('is-active');renderIcons();});
+  $(document).on('click','.sh-icon-more',function(){const previous=iconLimit;iconLimit+=48;renderIcons();$('.sh-icon-choice:not(.sh-icon-clear)').eq(previous).trigger('focus');});
   $(document).on('click','.sh-icon-choice',function(){
     if(!pickerTarget)return;
     const path=$(this).data('path')||'',input=pickerTarget.data('iconSelect')||pickerTarget.find('[data-field="icon"]');
@@ -126,18 +129,22 @@
     closePicker();
   });
   function openPicker(){
+    pickerIcons=pickerTarget&&pickerTarget.is('[data-sh-arrow-control]')?icons.filter(icon=>['Arrows','Arrows Action'].includes(icon.category)):icons;
+    iconLimit=48;
     category='همه';$('.sh-icon-search').val('');
-    const categories=['همه',...new Set(icons.map(icon=>icon.category))];
+    const categories=['همه',...new Set(pickerIcons.map(icon=>icon.category))];
     $('.sh-icon-categories').html(categories.map(name=>'<button type="button" class="sh-icon-category'+(name==='همه'?' is-active':'')+'" data-category="'+escapeHtml(name)+'">'+escapeHtml(name)+'</button>').join(''));
     $('.sh-icon-picker').prop('hidden',false).attr('aria-hidden','false');$('body').addClass('sh-picker-open');renderIcons();$('.sh-icon-search').trigger('focus');
   }
   function closePicker(){if(!$('.sh-icon-picker:visible').length)return;$('.sh-icon-picker').prop('hidden',true).attr('aria-hidden','true');$('body').removeClass('sh-picker-open');pickerTarget=null;if(pickerTrigger&&document.contains(pickerTrigger))pickerTrigger.focus();pickerTrigger=null;}
   function renderIcons(){
     const query=$('.sh-icon-search').val().trim().toLowerCase();
-    const found=icons.filter(icon=>(category==='همه'||icon.category===category)&&(!query||(icon.name+' '+icon.category+' '+icon.path).toLowerCase().includes(query)));
-    $('.sh-icon-grid').html('<button type="button" class="sh-icon-choice sh-icon-clear" data-path="" title="بدون آیکن"><span aria-hidden="true">×</span><small>بدون آیکن</small></button>'+found.map((icon,index)=>'<button type="button" class="sh-icon-choice" data-path="'+escapeHtml(icon.path)+'" title="'+escapeHtml(icon.category+' / '+icon.name)+'" aria-label="'+escapeHtml(icon.category+' / '+icon.name)+'"><img loading="'+(index<48?'eager':'lazy')+'" src="'+escapeHtml(urlFor(icon.path))+'" alt=""><small>'+escapeHtml(icon.name)+'</small></button>').join(''));
+    const found=pickerIcons.filter(icon=>(category==='همه'||icon.category===category)&&(!query||(icon.name+' '+icon.category+' '+icon.path).toLowerCase().includes(query)));
+    const visible=found.slice(0,iconLimit);
+    const clear=pickerTarget&&pickerTarget.is('[data-sh-arrow-control]')?'':'<button type="button" class="sh-icon-choice sh-icon-clear" data-path="" title="بدون آیکن"><span aria-hidden="true">×</span><small>بدون آیکن</small></button>';
+    $('.sh-icon-grid').html(clear+visible.map(icon=>'<button type="button" class="sh-icon-choice" data-path="'+escapeHtml(icon.path)+'" title="'+escapeHtml(icon.category+' / '+icon.name)+'" aria-label="'+escapeHtml(icon.category+' / '+icon.name)+'"><img loading="lazy" src="'+escapeHtml(urlFor(icon.path))+'" alt=""><small>'+escapeHtml(icon.name)+'</small></button>').join('')+(found.length>iconLimit?'<button type="button" class="sh-icon-more">نمایش بیشتر</button>':''));
     $('.sh-icon-empty').remove();if(!found.length)$('.sh-icon-grid').append('<p class="sh-icon-empty">آیکنی پیدا نشد.</p>');
-    $('.sh-icon-result-count').text(found.length+' آیکن');
+    $('.sh-icon-result-count').text(Math.min(iconLimit,found.length)+' از '+found.length+' آیکن');
   }
   $('.sh-icon-search').before('<span class="sh-icon-result-count" aria-live="polite"></span>');
 

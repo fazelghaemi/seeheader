@@ -92,6 +92,7 @@ foreach (['sh-themes', 'sh-layout', 'sh-actions', 'sh-topbar', 'sh-responsive', 
 }
 ensure(substr_count($admin, '<form') === substr_count($admin, '</form>'), 'Admin form is unbalanced');
 ensure(strpos($admin, 'data-sh-icon-control') !== false, 'Icon picker fields are missing');
+ensure(substr_count($admin, 'data-sh-arrow-control') === 4, 'Arrow icon picker controls are missing');
 
 $GLOBALS['hooks']['wp_enqueue_scripts'][0]();
 ensure(strpos(implode('', $GLOBALS['inline_styles']), 'max-width:900px') !== false, 'Mobile breakpoint was not applied');
@@ -100,6 +101,13 @@ ensure(strpos(implode('', $GLOBALS['inline_styles']), 'min-width:901px') !== fal
 $front = seeheader_render();
 ensure(substr_count($front, '<section') === substr_count($front, '</section>'), 'Mega menu sections are unbalanced');
 ensure(strpos($front, 'گروه بدون فرزند') !== false, 'Mega menu group is missing');
+ensure(strpos($front, 'class="sh-menu-label sh-menu-heading-toggle"') !== false, 'Placeholder parent must be a disclosure button');
+ensure(strpos($front, 'Arrows/alt-arrow-left.svg') !== false && strpos($front, 'Arrows/alt-arrow-down.svg') !== false, 'Arrow icons were not loaded from the icon pack');
+ensure(seeheader_valid_icon_path('Arrows/alt-arrow-left.svg'), 'New arrow icon was not recognized');
+ensure(!seeheader_valid_icon_path('../seeheader.php') && !seeheader_valid_icon_path('Arrows/../../seeheader.php'), 'Icon path escaped the icon pack');
+$custom_arrow = seeheader_sanitize(['menu_arrow_icon' => 'Arrows/round-alt-arrow-down.svg', 'submenu_arrow_icon' => '../bad.svg']);
+ensure($custom_arrow['menu_arrow_icon'] === 'Arrows/round-alt-arrow-down.svg' && $custom_arrow['submenu_arrow_icon'] === 'Arrows/alt-arrow-left.svg', 'Arrow icon selection or validation failed');
+ensure(strpos(seeheader_render($custom_arrow), 'Arrows/round-alt-arrow-down.svg') !== false, 'Selected arrow was not rendered');
 
 $clean = seeheader_sanitize([
     'logo' => ['invalid'],
@@ -120,12 +128,15 @@ ensure(strpos(seeheader_render($clean), 'sh-button-outline') !== false, 'Button 
 $rich = seeheader_sanitize(['nav_items' => [
     ['id' => 'resources', 'label' => 'Resources', 'url' => '/resources', 'mega' => 1],
     ['id' => 'guide', 'parent' => 'resources', 'label' => 'Guide', 'url' => '/guide', 'image' => 'https://example.test/guide.jpg', 'image_alt' => 'Guide artwork', 'badge' => 'New', 'badge_icon' => 'Essentional/crown-star.svg', 'badge_text_color' => '#006f73', 'badge_bg_color' => '#dff7f7'],
+    ['id' => 'soon', 'parent' => 'resources', 'label' => 'Coming soon', 'url' => '#'],
 ]]);
-ensure(count($rich['nav_items']) === 2 && $rich['nav_items'][1]['parent'] === 'resources', 'Rich menu changed the item structure');
+ensure(count($rich['nav_items']) === 3 && $rich['nav_items'][1]['parent'] === 'resources', 'Rich menu changed the item structure');
 $rich_html = seeheader_render($rich);
 ensure(strpos($rich_html, 'sh-feature-card') !== false && strpos($rich_html, 'Guide artwork') !== false, 'Image card was not rendered');
 ensure(strpos($rich_html, '--sh-badge-text:#006f73') !== false && strpos($rich_html, '--sh-badge-bg:#dff7f7') !== false, 'Badge colors were not rendered');
 ensure(strpos($rich_html, 'crown-star.svg') !== false, 'Badge icon was not rendered');
+ensure(strpos($rich_html, 'href="#"') === false && strpos($rich_html, 'Coming soon') !== false, 'Placeholder was emitted as a crawlable link');
+ensure(strpos($rich_html, 'width="320" height="160" loading="lazy" decoding="async"') !== false, 'Mega menu image dimensions are missing');
 
 $title = $GLOBALS['filters']['nav_menu_item_title'][0]('منو', (object) ['ID' => 42], (object) ['seeheader_icon_map' => [42 => 'Users/user.svg']]);
 ensure(strpos($title, 'sh-action-icon') !== false, 'WordPress menu icon was not rendered');
