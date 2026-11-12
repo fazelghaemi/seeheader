@@ -3,14 +3,14 @@
 /**
  * Plugin Name: SeeHeader — هدر ساز
  * Description: هدر ساز واکنش‌گرا با طرح‌های متنوع، منوهای وردپرس و ویجت Elementor.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: ReadyStudio
  * Text Domain: seeheader
  * Requires at least: 6.0
  * Requires PHP: 7.4
  */
 if (!defined('ABSPATH')) exit;
-define('SEEHEADER_VERSION', '1.3.0');
+define('SEEHEADER_VERSION', '1.4.0');
 define('SEEHEADER_DIR', plugin_dir_path(__FILE__));
 define('SEEHEADER_URL', plugin_dir_url(__FILE__));
 
@@ -197,6 +197,22 @@ add_action('admin_menu', function () {
 add_action('admin_init', function () {
   register_setting('seeheader_group', 'seeheader_options', ['sanitize_callback' => 'seeheader_sanitize']);
 });
+add_action('rest_api_init', function () {
+  $permission = static function () { return current_user_can('manage_options'); };
+  register_rest_route('seeheader/v1', '/config', [
+    ['methods' => 'GET', 'permission_callback' => $permission, 'callback' => static function () { return rest_ensure_response(seeheader_options()); }],
+    ['methods' => 'POST', 'permission_callback' => $permission, 'callback' => static function ($request) {
+      $changes = $request->get_json_params();
+      if (!is_array($changes)) return new WP_Error('seeheader_invalid_config', 'تنظیمات باید یک شیء JSON باشد.', ['status' => 400]);
+      $allowed = array_keys(seeheader_defaults());
+      $changes = array_intersect_key($changes, array_fill_keys($allowed, true));
+      $next = seeheader_sanitize(array_replace(seeheader_options(), $changes));
+      update_option('seeheader_options', $next);
+      return rest_ensure_response($next);
+    }],
+  ]);
+  register_rest_route('seeheader/v1', '/icons', ['methods' => 'GET', 'permission_callback' => $permission, 'callback' => static function () { return rest_ensure_response(seeheader_icon_catalog()); }]);
+});
 function seeheader_settings_page()
 {
   if (!current_user_can('manage_options')) return;
@@ -322,6 +338,8 @@ function seeheader_settings_page()
                 <option value="custom" <?php selected($o['palette_mode'], 'custom'); ?>>رنگ دلخواه</option>
               </select></label>
             <div class="sh-colors"><?php foreach (['accent' => 'رنگ تأکیدی', 'surface' => 'پس‌زمینه', 'text' => 'رنگ متن', 'border' => 'خط جداکننده'] as $key => $label): ?><label><?php echo esc_html($label); ?><input type="color" name="seeheader_options[<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($o[$key]); ?>"></label><?php endforeach; ?></div>
+            <details class="sh-style-details" open><summary>رنگ منو و آیکن‌ها</summary><div class="sh-colors"><?php foreach (['menu_text' => 'متن منو', 'menu_hover' => 'هاور متن', 'icon_color' => 'آیکن‌ها', 'icon_hover' => 'هاور آیکن‌ها'] as $key => $label): ?><label><?php echo esc_html($label); ?><input type="color" name="seeheader_options[<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($o[$key] ?: '#000000'); ?>" data-color-optional <?php echo !$o[$key] ? 'disabled' : ''; ?>><input type="checkbox" name="seeheader_color_auto[<?php echo esc_attr($key); ?>]" value="1" <?php checked($o[$key], ''); ?>> خودکار</label><?php endforeach; ?></div></details>
+            <details class="sh-style-details"><summary>دکمه حساب کاربری</summary><div class="sh-colors"><?php foreach (['button_bg' => 'پس‌زمینه', 'button_text' => 'متن', 'button_hover_bg' => 'پس‌زمینه هاور', 'button_hover_text' => 'متن هاور', 'button_border' => 'حاشیه'] as $key => $label): ?><label><?php echo esc_html($label); ?><input type="color" name="seeheader_options[<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($o[$key] ?: '#000000'); ?>" data-color-optional <?php echo !$o[$key] ? 'disabled' : ''; ?>><input type="checkbox" name="seeheader_color_auto[<?php echo esc_attr($key); ?>]" value="1" <?php checked($o[$key], ''); ?>> خودکار</label><?php endforeach; ?></div><label>نوع دکمه<select name="seeheader_options[button_style]"><option value="solid" <?php selected($o['button_style'], 'solid'); ?>>توپر</option><option value="outline" <?php selected($o['button_style'], 'outline'); ?>>دورخط</option><option value="ghost" <?php selected($o['button_style'], 'ghost'); ?>>شفاف</option></select></label><label>گردی گوشه <input type="number" min="0" max="48" name="seeheader_options[button_radius]" value="<?php echo esc_attr($o['button_radius']); ?>"></label><label>فاصله افقی <input type="number" min="0" max="32" name="seeheader_options[button_padding]" value="<?php echo esc_attr($o['button_padding']); ?>"></label></details>
           </section>
           <section class="sh-side-card" id="sh-responsive"><small>06 / نمایشگرها</small>
             <h2>رفتار واکنش‌گرا</h2><label class="sh-check"><input type="checkbox" name="seeheader_options[desktop]" value="1" <?php checked($o['desktop']); ?>> نمایش در دسکتاپ</label><label class="sh-check"><input type="checkbox" name="seeheader_options[mobile]" value="1" <?php checked($o['mobile']); ?>> نمایش در موبایل</label><label>ارتفاع لوگو <span class="sh-range"><input type="range" min="24" max="100" name="seeheader_options[logo_height]" value="<?php echo esc_attr($o['logo_height']); ?>"><output><?php echo esc_html($o['logo_height']); ?>px</output></span></label><label>نقطه شکست موبایل <span class="sh-range"><input type="range" min="640" max="1024" step="16" name="seeheader_options[mobile_breakpoint]" value="<?php echo esc_attr($o['mobile_breakpoint']); ?>"><output><?php echo esc_html($o['mobile_breakpoint']); ?>px</output></span></label>
@@ -479,7 +497,7 @@ function seeheader_settings_page()
           {
             $path = ltrim(str_replace('\\', '/', (string) $path), '/');
             if (!seeheader_valid_icon_path($path)) return '';
-            return '<img class="sh-action-icon" src="' . esc_url(SEEHEADER_URL . 'assets/icons/' . implode('/', array_map('rawurlencode', explode('/', $path)))) . '" alt="" aria-hidden="true" loading="lazy">';
+            return '<span class="sh-action-icon" style="--sh-icon-src:url(&quot;' . esc_url(SEEHEADER_URL . 'assets/icons/' . implode('/', array_map('rawurlencode', explode('/', $path)))) . '&quot;)" aria-hidden="true"></span>';
           }
 
           /** Use the configured logo, then the active theme logo, then the site name. */
@@ -539,13 +557,15 @@ function seeheader_settings_page()
             foreach (['accent', 'surface', 'text', 'border'] as $color_key) $o[$color_key] = sanitize_hex_color($o[$color_key] ?? '') ?: $defaults[$color_key];
             $vars = sprintf('--sh-accent:%s;--sh-surface:%s;--sh-text:%s;--sh-border:%s;--sh-width:%dpx;--sh-logo-height:%dpx', $o['accent'], $o['surface'], $o['text'], $o['border'], min(1920, max(760, absint($o['width']))), min(100, max(24, absint($o['logo_height']))));
             foreach (['main_height' => ['--sh-main-height', 48, 140], 'search_width' => ['--sh-search-width', 120, 700], 'nav_gap' => ['--sh-nav-gap', 0, 60], 'control_radius' => ['--sh-control-radius', 0, 40]] as $key => $rule) if (isset($o[$key]) && $o[$key] !== '') $vars .= ';' . $rule[0] . ':' . min($rule[2], max($rule[1], absint($o[$key]))) . 'px';
+            foreach (['menu_text' => '--sh-menu-text', 'menu_hover' => '--sh-menu-hover', 'icon_color' => '--sh-icon-color', 'icon_hover' => '--sh-icon-hover', 'button_bg' => '--sh-button-bg', 'button_text' => '--sh-button-text', 'button_hover_bg' => '--sh-button-hover-bg', 'button_hover_text' => '--sh-button-hover-text', 'button_border' => '--sh-button-border'] as $key => $variable) if (!empty($o[$key]) && sanitize_hex_color($o[$key])) $vars .= ';' . $variable . ':' . $o[$key];
+            $vars .= ';--sh-button-padding:' . min(32, max(0, absint($o['button_padding'] ?? 11))) . 'px;--sh-button-radius:' . min(48, max(0, absint($o['button_radius'] ?? 10))) . 'px';
             if (in_array($o['nav_alignment'] ?? '', ['flex-start', 'center', 'flex-end'], true)) $vars .= ';--sh-nav-align:' . $o['nav_alignment'];
             $menu_markup = '';
             if (($o['menu_source'] ?? 'builder') === 'builder' && !empty($o['nav_items'])) $menu_markup = '<ul class="sh-menu sh-built-menu-list">' . seeheader_render_built_items($o['nav_items'], '', 0, $theme) . '</ul>';
             elseif (($o['menu_source'] ?? 'builder') === 'wordpress' && !empty($o['menu'])) $menu_markup = seeheader_menu_markup($o['menu']);
             if (!$menu_markup || strpos($menu_markup, '<li') === false) $menu_markup = '<ul class="sh-menu"><li><a href="' . esc_url(home_url('/')) . '">' . esc_html__('صفحه اصلی', 'seeheader') . '</a></li></ul>';
             ob_start(); ?>
-  <header class="<?php echo esc_attr($cls); ?>" style="<?php echo esc_attr($vars); ?>" dir="rtl">
+  <header class="<?php echo esc_attr($cls . ' sh-button-' . (in_array($o['button_style'] ?? '', ['solid', 'outline', 'ghost'], true) ? $o['button_style'] : 'solid')); ?>" style="<?php echo esc_attr($vars); ?>" dir="rtl">
     <?php if (!empty($o['topbar']) && !empty($o['topbar_text'])): ?><div class="sh-topbar"><?php if (!empty($o['topbar_url'])): ?><a href="<?php echo esc_url($o['topbar_url']); ?>"><?php echo esc_html($o['topbar_text']); ?><span aria-hidden="true">←</span></a><?php else: ?><span><?php echo esc_html($o['topbar_text']); ?></span><?php endif; ?></div><?php endif; ?>
     <div class="sh-main"><button class="sh-toggle" type="button" aria-expanded="false" aria-controls="<?php echo esc_attr($id); ?>" aria-label="باز کردن منو"><span></span><span></span></button>
       <?php echo seeheader_logo($o); ?><div class="sh-tools"><?php if (!empty($o['account'])): $account = $o['account_url'] ?: (is_user_logged_in() ? admin_url('profile.php') : wp_login_url()); ?><a class="sh-account" href="<?php echo esc_url($account); ?>" aria-label="<?php echo esc_attr(is_user_logged_in() ? 'حساب کاربری' : ($o['account_label'] ?: 'ورود')); ?>"><?php echo seeheader_icon($o['account_icon'] ?? 'Users/user.svg'); ?><span class="sh-tool-label"><?php echo is_user_logged_in() ? 'حساب کاربری' : esc_html($o['account_label'] ?: 'ورود'); ?></span></a><?php endif; ?>
@@ -610,6 +630,10 @@ function seeheader_settings_page()
                 $this->end_controls_section();
                 $this->start_controls_section('style', ['label' => 'رنگ و اندازه', 'tab' => \Elementor\Controls_Manager::TAB_STYLE]);
                 foreach (['accent' => 'رنگ تأکیدی', 'surface' => 'پس‌زمینه', 'text' => 'رنگ متن', 'border' => 'رنگ خط'] as $key => $label) $this->add_control($key, ['label' => $label, 'type' => \Elementor\Controls_Manager::COLOR]);
+                foreach (['menu_text' => 'رنگ متن منو', 'menu_hover' => 'هاور متن منو', 'icon_color' => 'رنگ آیکن‌ها', 'icon_hover' => 'هاور آیکن‌ها', 'button_bg' => 'پس‌زمینه دکمه', 'button_text' => 'متن دکمه', 'button_hover_bg' => 'پس‌زمینه هاور دکمه', 'button_hover_text' => 'متن هاور دکمه', 'button_border' => 'حاشیه دکمه'] as $key => $label) $this->add_control($key, ['label' => $label, 'type' => \Elementor\Controls_Manager::COLOR]);
+                $this->add_control('button_style', ['label' => 'نوع دکمه', 'type' => \Elementor\Controls_Manager::SELECT, 'default' => '', 'options' => ['' => 'تنظیمات افزونه', 'solid' => 'توپر', 'outline' => 'دورخط', 'ghost' => 'شفاف']]);
+                $this->add_control('button_radius', ['label' => 'گردی دکمه', 'type' => \Elementor\Controls_Manager::NUMBER, 'min' => 0, 'max' => 48]);
+                $this->add_control('button_padding', ['label' => 'فاصله افقی دکمه', 'type' => \Elementor\Controls_Manager::NUMBER, 'min' => 0, 'max' => 32]);
                 $this->add_control('width', ['label' => 'حداکثر عرض هدر', 'type' => \Elementor\Controls_Manager::NUMBER, 'min' => 760, 'max' => 1920]);
                 $this->add_control('logo_height', ['label' => 'ارتفاع لوگو', 'type' => \Elementor\Controls_Manager::NUMBER, 'min' => 24, 'max' => 100]);
                 $this->add_control('main_height', ['label' => 'ارتفاع ردیف اصلی', 'type' => \Elementor\Controls_Manager::NUMBER, 'min' => 48, 'max' => 140]);
@@ -637,6 +661,9 @@ function seeheader_settings_page()
                   $o[$key] = sanitize_hex_color($s[$key]);
                   $o['palette_mode'] = 'custom';
                 }
+                foreach (['menu_text', 'menu_hover', 'icon_color', 'icon_hover', 'button_bg', 'button_text', 'button_hover_bg', 'button_hover_text', 'button_border'] as $key) if (!empty($s[$key]) && sanitize_hex_color($s[$key])) $o[$key] = sanitize_hex_color($s[$key]);
+                if (!empty($s['button_style']) && in_array($s['button_style'], ['solid', 'outline', 'ghost'], true)) $o['button_style'] = $s['button_style'];
+                foreach (['button_radius' => 48, 'button_padding' => 32] as $key => $maximum) if (isset($s[$key]) && $s[$key] !== '') $o[$key] = min($maximum, max(0, absint($s[$key])));
                 if (!empty($s['width'])) $o['width'] = min(1920, max(760, absint($s['width'])));
                 if (!empty($s['logo_height'])) $o['logo_height'] = min(100, max(24, absint($s['logo_height'])));
                 foreach (['main_height' => [48, 140], 'search_width' => [120, 700], 'nav_gap' => [0, 60], 'control_radius' => [0, 40]] as $key => $range) if (isset($s[$key]) && $s[$key] !== '') $o[$key] = min($range[1], max($range[0], absint($s[$key])));

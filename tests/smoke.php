@@ -32,6 +32,10 @@ function add_action($name, $callback, $priority = 10) { $GLOBALS['hooks'][$name]
 function add_filter($name, $callback, $priority = 10, $accepted = 1) { $GLOBALS['filters'][$name][] = $callback; }
 function add_shortcode($name, $callback) { return true; }
 function get_option($name, $default = []) { return $GLOBALS['saved_options']; }
+function update_option($name, $value) { $GLOBALS['saved_options'] = $value; return true; }
+function register_rest_route($namespace, $route, $args) { $GLOBALS['rest_routes'][$namespace . $route] = $args; }
+function rest_ensure_response($value) { return $value; }
+class WP_Error { public function __construct($code, $message, $data = []) {} }
 function wp_parse_args($args, $defaults) { return array_merge($defaults, $args); }
 function absint($value) { return abs((int) $value); }
 function wp_generate_password($length = 6) { return str_repeat('a', $length); }
@@ -103,12 +107,25 @@ $clean = seeheader_sanitize([
     'nav_items' => [['id' => 'same', 'label' => 'A'], ['id' => 'same', 'label' => 'B']],
     'control_radius' => '0',
     'nav_gap' => '0',
+    'menu_hover' => '#123456',
+    'button_style' => 'outline',
+    'button_radius' => 18,
 ]);
 ensure($clean['nav_items'][0]['id'] !== $clean['nav_items'][1]['id'], 'Duplicate IDs were saved');
 ensure($clean['control_radius'] === 0 && $clean['nav_gap'] === 0, 'Zero layout values were not saved');
 ensure($clean['logo'] === '', 'Malformed logo was accepted');
+ensure($clean['menu_hover'] === '#123456' && $clean['button_style'] === 'outline' && $clean['button_radius'] === 18, 'Menu or button styling was not saved');
+ensure(strpos(seeheader_render($clean), 'sh-button-outline') !== false, 'Button style was not rendered');
 
 $title = $GLOBALS['filters']['nav_menu_item_title'][0]('منو', (object) ['ID' => 42], (object) ['seeheader_icon_map' => [42 => 'Users/user.svg']]);
 ensure(strpos($title, 'sh-action-icon') !== false, 'WordPress menu icon was not rendered');
+
+$GLOBALS['hooks']['rest_api_init'][0]();
+ensure(isset($GLOBALS['rest_routes']['seeheader/v1/config']), 'MCP config REST route was not registered');
+ensure(isset($GLOBALS['rest_routes']['seeheader/v1/icons']), 'MCP icons REST route was not registered');
+$request = new class { public function get_json_params() { return ['button_style' => 'outline', 'button_radius' => 18, 'menu_hover' => '#123456']; } };
+$updated = $GLOBALS['rest_routes']['seeheader/v1/config'][1]['callback']($request);
+ensure($updated['button_style'] === 'outline' && $updated['button_radius'] === 18 && $updated['menu_hover'] === '#123456', 'MCP config update failed');
+ensure(count($updated['nav_items']) === 4, 'MCP partial update lost the existing menu');
 
 echo "Admin, sanitization, responsive CSS, mega menu and WordPress icons: OK\n";
