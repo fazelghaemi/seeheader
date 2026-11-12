@@ -1,0 +1,1 @@
+document.addEventListener('click',function(e){const b=e.target.closest('.sh-toggle');if(!b)return;const h=b.closest('.sh-header');const open=h.classList.toggle('sh-open');b.setAttribute('aria-expanded',String(open));b.setAttribute('aria-label',open?'بستن منو':'باز کردن منو');});
