@@ -3,14 +3,14 @@
 /**
  * Plugin Name: SeeHeader — هدر ساز
  * Description: هدر ساز واکنش‌گرا با طرح‌های متنوع، منوهای وردپرس و ویجت Elementor.
- * Version: 1.4.0
+ * Version: 1.5.1
  * Author: ReadyStudio
  * Text Domain: seeheader
  * Requires at least: 6.0
  * Requires PHP: 7.4
  */
 if (!defined('ABSPATH')) exit;
-define('SEEHEADER_VERSION', '1.4.0');
+define('SEEHEADER_VERSION', '1.5.1');
 define('SEEHEADER_DIR', plugin_dir_path(__FILE__));
 define('SEEHEADER_URL', plugin_dir_url(__FILE__));
 
@@ -141,7 +141,8 @@ function seeheader_sanitize($in)
     if (isset($used_ids[$id])) $id = 'nav-' . count($out['nav_items']) . '-' . wp_generate_password(6, false, false);
     $used_ids[$id] = true;
     if ($icon && !in_array($icon, $valid_icon_paths, true)) $icon = '';
-    $out['nav_items'][] = ['id' => $id, 'label' => $label, 'url' => $url ?: '#', 'icon' => $icon, 'parent' => $parent === $id ? '' : $parent, 'description' => sanitize_text_field(seeheader_scalar($row['description'] ?? '')), 'badge' => sanitize_text_field(seeheader_scalar($row['badge'] ?? '')), 'image' => esc_url_raw(seeheader_scalar($row['image'] ?? '')), 'type' => ($row['type'] ?? 'link') === 'heading' ? 'heading' : 'link', 'column' => min(4, max(1, absint(seeheader_scalar($row['column'] ?? 1)))), 'mega' => empty($row['mega']) ? 0 : 1, 'new_tab' => empty($row['new_tab']) ? 0 : 1];
+    $badge_icon = sanitize_text_field(seeheader_scalar($row['badge_icon'] ?? ''));
+    $out['nav_items'][] = ['id' => $id, 'label' => $label, 'url' => $url ?: '#', 'icon' => $icon, 'parent' => $parent === $id ? '' : $parent, 'description' => sanitize_text_field(seeheader_scalar($row['description'] ?? '')), 'badge' => sanitize_text_field(seeheader_scalar($row['badge'] ?? '')), 'badge_icon' => in_array($badge_icon, $valid_icon_paths, true) ? $badge_icon : '', 'badge_text_color' => sanitize_hex_color(seeheader_scalar($row['badge_text_color'] ?? '')) ?: '', 'badge_bg_color' => sanitize_hex_color(seeheader_scalar($row['badge_bg_color'] ?? '')) ?: '', 'image' => esc_url_raw(seeheader_scalar($row['image'] ?? '')), 'image_alt' => sanitize_text_field(seeheader_scalar($row['image_alt'] ?? '')), 'type' => ($row['type'] ?? 'link') === 'heading' ? 'heading' : 'link', 'column' => min(4, max(1, absint(seeheader_scalar($row['column'] ?? 1)))), 'mega' => empty($row['mega']) ? 0 : 1, 'new_tab' => empty($row['new_tab']) ? 0 : 1];
   }
   $parent_map = [];
   foreach ($out['nav_items'] as $item) $parent_map[$item['id']] = $item['parent'];
@@ -384,9 +385,13 @@ function seeheader_settings_page()
                                                   } ?>
           </select></label>
         <label>ستون در مگامنو<select name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][column]"><?php for ($c = 1; $c <= 4; $c++) printf('<option value="%d" %s>ستون %d</option>', $c, selected($item['column'] ?? 1, $c, false), $c); ?></select></label>
-        <label>نشان<input type="text" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][badge]" value="<?php echo esc_attr($item['badge'] ?? ''); ?>" placeholder="جدید / ویژه"></label>
+        <label>متن بج<input type="text" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][badge]" value="<?php echo esc_attr($item['badge'] ?? ''); ?>" placeholder="جدید / به‌زودی"></label>
+        <label class="sh-badge-color">رنگ متن بج<input type="color" data-color-optional name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][badge_text_color]" value="<?php echo esc_attr(($item['badge_text_color'] ?? '') ?: '#ffffff'); ?>" <?php echo empty($item['badge_text_color']) ? 'disabled' : ''; ?>><span><input type="checkbox" <?php checked(empty($item['badge_text_color'])); ?>> خودکار</span></label>
+        <label class="sh-badge-color">رنگ پس‌زمینه بج<input type="color" data-color-optional name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][badge_bg_color]" value="<?php echo esc_attr(($item['badge_bg_color'] ?? '') ?: '#e5442d'); ?>" <?php echo empty($item['badge_bg_color']) ? 'disabled' : ''; ?>><span><input type="checkbox" <?php checked(empty($item['badge_bg_color'])); ?>> خودکار</span></label>
+        <div class="sh-icon-select-wrap" data-sh-icon-control><span>آیکن بج</span><input data-field="icon" type="hidden" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][badge_icon]" value="<?php echo esc_attr($item['badge_icon'] ?? ''); ?>"><button type="button" class="sh-icon-select" aria-label="انتخاب آیکن بج"><img data-icon-preview src="<?php echo esc_url(seeheader_icon_url($item['badge_icon'] ?? '')); ?>" alt="" <?php echo empty($item['badge_icon']) ? 'hidden' : ''; ?>><b><?php echo !empty($item['badge_icon']) ? esc_html(basename($item['badge_icon'])) : 'انتخاب آیکن'; ?></b></button></div>
         <label>توضیح<input type="text" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][description]" value="<?php echo esc_attr($item['description'] ?? ''); ?>" placeholder="توضیح کوتاه"></label>
-        <label>بنر مگامنو<span class="sh-media-field"><input id="<?php echo esc_attr($image_id); ?>" type="url" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][image]" value="<?php echo esc_attr($item['image'] ?? ''); ?>" placeholder="انتخاب تصویر"><button type="button" class="button" data-sh-media="<?php echo esc_attr($image_id); ?>">انتخاب</button></span></label>
+        <label class="sh-menu-image-field">تصویر آیتم یا کارت مگامنو<span class="sh-media-field"><input id="<?php echo esc_attr($image_id); ?>" type="url" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][image]" value="<?php echo esc_attr($item['image'] ?? ''); ?>" placeholder="انتخاب تصویر"><button type="button" class="button" data-sh-media="<?php echo esc_attr($image_id); ?>">انتخاب</button></span><img class="sh-image-preview" src="<?php echo esc_url($item['image'] ?? ''); ?>" alt="" <?php echo empty($item['image']) ? 'hidden' : ''; ?>></label>
+        <label>متن جایگزین تصویر<input type="text" name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][image_alt]" value="<?php echo esc_attr($item['image_alt'] ?? ''); ?>" placeholder="توصیف کوتاه تصویر"></label>
         <label>نوع آیتم<select name="seeheader_options[nav_items][<?php echo esc_attr($index); ?>][type]">
             <option value="link" <?php selected($item['type'] ?? 'link', 'link'); ?>>پیوند</option>
             <option value="heading" <?php selected($item['type'] ?? '', 'heading'); ?>>عنوان گروه</option>
@@ -410,11 +415,18 @@ function seeheader_settings_page()
             $target = !empty($item['new_tab']) ? ' target="_blank" rel="noopener noreferrer"' : '';
             $icon = !empty($item['icon']) ? '<span class="sh-menu-icon">' . seeheader_icon($item['icon']) . '</span>' : '';
             $description = !empty($item['description']) ? '<small>' . esc_html($item['description']) . '</small>' : '';
-            $badge = !empty($item['badge']) ? '<em class="sh-menu-badge">' . esc_html($item['badge']) . '</em>' : '';
-            if ($is_heading && $has_children) return '<button type="button" class="sh-mega-heading sh-menu-heading-toggle" aria-haspopup="true" aria-expanded="false">' . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . '<i class="sh-menu-chevron" aria-hidden="true"></i></button>' . $description;
-            if ($is_heading) return '<span class="sh-mega-heading">' . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . '</span>' . $description;
+            $badge = '';
+            if (!empty($item['badge'])) {
+              $badge_vars = '';
+              foreach (['badge_text_color' => '--sh-badge-text', 'badge_bg_color' => '--sh-badge-bg'] as $key => $variable) if (!empty($item[$key]) && sanitize_hex_color($item[$key])) $badge_vars .= $variable . ':' . $item[$key] . ';';
+              $badge_icon = !empty($item['badge_icon']) ? seeheader_icon($item['badge_icon']) : '';
+              $badge = '<em class="sh-menu-badge"' . ($badge_vars ? ' style="' . esc_attr($badge_vars) . '"' : '') . '>' . $badge_icon . '<span>' . esc_html($item['badge']) . '</span></em>';
+            }
+            $thumbnail = !empty($item['image']) ? '<span class="sh-menu-thumbnail"><img src="' . esc_url($item['image']) . '" alt="" loading="lazy"></span>' : '';
+            if ($is_heading && $has_children) return '<button type="button" class="sh-mega-heading sh-menu-heading-toggle" aria-haspopup="true" aria-expanded="false">' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . '<i class="sh-menu-chevron" aria-hidden="true"></i></button>' . $description;
+            if ($is_heading) return '<span class="sh-mega-heading">' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . '</span>' . $description;
             $aria = $has_children ? ' aria-haspopup="true" aria-expanded="false"' : '';
-            return '<a href="' . esc_url($url) . '"' . $target . $aria . '>' . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . ($has_children ? '<i class="sh-menu-chevron" aria-hidden="true"></i>' : '') . '</a>' . $description;
+            return '<a href="' . esc_url($url) . '"' . $target . $aria . '>' . $thumbnail . $icon . '<span>' . esc_html($item['label']) . '</span>' . $badge . ($has_children ? '<i class="sh-menu-chevron" aria-hidden="true"></i>' : '') . '</a>' . $description;
           }
           function seeheader_render_built_items($items, $parent_id = '', $depth = 0, $theme = 'classic', $seen = [])
           {
@@ -460,7 +472,7 @@ function seeheader_settings_page()
                 $html .= '</section>';
               }
             }
-            return $html . '</div>' . seeheader_panel_promo(array_merge([$root], $groups)) . '</div>';
+            return $html . '</div>' . seeheader_panel_promo($items, $root['id']) . '</div>';
           }
           function seeheader_render_digikala_panel($items, $root, $groups, $theme, $seen)
           {
@@ -471,12 +483,29 @@ function seeheader_settings_page()
               $kids = seeheader_children($items, $group['id']);
               $html .= '<section class="sh-mega-category-panel' . ($i === 0 ? ' is-active' : '') . '" role="tabpanel" data-mega-panel="' . esc_attr($group['id']) . '">' . seeheader_render_nav_link($group, (bool)$kids) . '<div class="sh-mega-links"><ul>' . ($kids ? seeheader_render_built_items($items, $group['id'], 2, $theme, array_merge($seen, [$group['id']])) : '') . '</ul></div></section>';
             }
-            return $html . '</div>' . seeheader_panel_promo(array_merge([$root], $groups)) . '</div>';
+            return $html . '</div>' . seeheader_panel_promo($items, $root['id']) . '</div>';
           }
-          function seeheader_panel_promo($items)
+          function seeheader_panel_promo($items, $root_id)
           {
-            foreach ($items as $item) if (!empty($item['image'])) return '<aside class="sh-mega-promo"><img src="' . esc_url($item['image']) . '" alt=""><strong>' . esc_html($item['label']) . '</strong>' . (!empty($item['description']) ? '<span>' . esc_html($item['description']) . '</span>' : '') . '</aside>';
-            return '';
+            $parents = [];
+            foreach ($items as $item) if (!empty($item['id'])) $parents[$item['id']] = $item['parent'] ?? '';
+            $cards = '';
+            foreach ($items as $item) {
+              if (empty($item['image']) || empty($item['id'])) continue;
+              $cursor = $item['id'];
+              $visited = [];
+              while ($cursor && !isset($visited[$cursor])) {
+                if ($cursor === $root_id) break;
+                $visited[$cursor] = true;
+                $cursor = $parents[$cursor] ?? '';
+              }
+              if ($cursor !== $root_id) continue;
+              $url = $item['url'] ?? '#';
+              $tag = $url && $url !== '#' ? 'a' : 'div';
+              $target = $tag === 'a' && !empty($item['new_tab']) ? ' target="_blank" rel="noopener noreferrer"' : '';
+              $cards .= '<' . $tag . ' class="sh-feature-card"' . ($tag === 'a' ? ' href="' . esc_url($url) . '"' . $target : '') . '><img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['image_alt'] ?? '') . '" loading="lazy"><span class="sh-feature-copy"><strong>' . esc_html($item['label']) . '</strong>' . (!empty($item['description']) ? '<small>' . esc_html($item['description']) . '</small>' : '') . '</span></' . $tag . '>';
+            }
+            return $cards ? '<aside class="sh-mega-featured" aria-label="مطالب تصویری">' . $cards . '</aside>' : '';
           }
 
           /** Render an icon from the bundled SVG icon pack. */

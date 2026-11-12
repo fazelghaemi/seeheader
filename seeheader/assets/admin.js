@@ -55,6 +55,7 @@
     const index=navIndex++,id='nav'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     const html=$('#sh-nav-item-template').html().replace(/__INDEX__/g,String(index)).replace(/__ITEMID__/g,id);
     const row=$(html).appendTo('.sh-nav-items');
+    syncOptionalColors(row);
     refreshParents({id,parent:parentId||''});
     row.find('[data-nav-label]').trigger('focus');
   }
@@ -98,6 +99,7 @@
   $(document).on('input change','#sh-settings input,#sh-settings select',updatePreview);
   $(document).on('click','[data-sh-device]',function(){$('[data-sh-device]').removeClass('is-current');$(this).addClass('is-current');$('[data-sh-preview]').toggleClass('is-mobile',$(this).data('sh-device')==='mobile');});
   $(document).on('click','[data-sh-media]',function(){if(!window.wp||!wp.media)return;const target=$('#'+$(this).data('sh-media'));const frame=wp.media({title:'انتخاب تصویر',button:{text:'استفاده از تصویر'},multiple:false,library:{type:'image'}});frame.on('select',()=>target.val(frame.state().get('selection').first().toJSON().url).trigger('input'));frame.open();});
+  $(document).on('input','.sh-menu-image-field input[type=url]',function(){$(this).closest('.sh-menu-image-field').find('.sh-image-preview').attr('src',this.value).prop('hidden',!this.value);});
   $('.sh-section-nav a').on('click',function(event){const target=document.querySelector(this.getAttribute('href'));if(!target)return;event.preventDefault();target.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'',this.getAttribute('href'));});
 
   // Replace the unwieldy account icon select with the same visual picker as menu items.
@@ -139,7 +141,14 @@
   }
   $('.sh-icon-search').before('<span class="sh-icon-result-count" aria-live="polite"></span>');
 
-  $('.sh-colors [data-color-optional]').each(function(){const color=$(this),auto=color.siblings('input[type=checkbox]');function sync(){color.prop('disabled',auto.is(':checked')).toggleClass('is-disabled',auto.is(':checked'));updatePreview();}auto.on('change',sync);sync();});
+  function syncOptionalColors(scope){
+    $(scope).find('[data-color-optional]').each(function(){
+      const color=$(this),auto=color.closest('label').find('input[type=checkbox]').first();
+      function sync(){color.prop('disabled',auto.is(':checked')).toggleClass('is-disabled',auto.is(':checked'));updatePreview();}
+      auto.off('change.shColor').on('change.shColor',sync);sync();
+    });
+  }
+  syncOptionalColors(document);
   function updatePreview(){
     const root=$('[data-sh-preview]');if(!root.length)return;
     const val=name=>$('#sh-settings [name="seeheader_options['+name+']"]');

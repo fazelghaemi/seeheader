@@ -117,6 +117,16 @@ ensure($clean['logo'] === '', 'Malformed logo was accepted');
 ensure($clean['menu_hover'] === '#123456' && $clean['button_style'] === 'outline' && $clean['button_radius'] === 18, 'Menu or button styling was not saved');
 ensure(strpos(seeheader_render($clean), 'sh-button-outline') !== false, 'Button style was not rendered');
 
+$rich = seeheader_sanitize(['nav_items' => [
+    ['id' => 'resources', 'label' => 'Resources', 'url' => '/resources', 'mega' => 1],
+    ['id' => 'guide', 'parent' => 'resources', 'label' => 'Guide', 'url' => '/guide', 'image' => 'https://example.test/guide.jpg', 'image_alt' => 'Guide artwork', 'badge' => 'New', 'badge_icon' => 'Essentional/crown-star.svg', 'badge_text_color' => '#006f73', 'badge_bg_color' => '#dff7f7'],
+]]);
+ensure(count($rich['nav_items']) === 2 && $rich['nav_items'][1]['parent'] === 'resources', 'Rich menu changed the item structure');
+$rich_html = seeheader_render($rich);
+ensure(strpos($rich_html, 'sh-feature-card') !== false && strpos($rich_html, 'Guide artwork') !== false, 'Image card was not rendered');
+ensure(strpos($rich_html, '--sh-badge-text:#006f73') !== false && strpos($rich_html, '--sh-badge-bg:#dff7f7') !== false, 'Badge colors were not rendered');
+ensure(strpos($rich_html, 'crown-star.svg') !== false, 'Badge icon was not rendered');
+
 $title = $GLOBALS['filters']['nav_menu_item_title'][0]('منو', (object) ['ID' => 42], (object) ['seeheader_icon_map' => [42 => 'Users/user.svg']]);
 ensure(strpos($title, 'sh-action-icon') !== false, 'WordPress menu icon was not rendered');
 
